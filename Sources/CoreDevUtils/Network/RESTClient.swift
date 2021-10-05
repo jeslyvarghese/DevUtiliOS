@@ -1,6 +1,6 @@
 //
 //  RESTClient.swift
-//  
+//
 //
 //  Created by Jesly Varghese
 //
@@ -13,10 +13,10 @@ public protocol Path {
 }
 
 /// Error representing there was no valid response from server
-public struct NoResponseError: Error { }
+public struct NoResponseError: Error {}
 
 /// Error representing there was no data in the response
-public struct NoDataError: Error { }
+public struct NoDataError: Error {}
 
 /// Error raised when the server responds with any 5XX errors
 public struct ServerError: Error {
@@ -42,14 +42,13 @@ public struct RESTResponse {
     public let response: HTTPURLResponse?
 }
 
-
-/// <#Description#>
+/// A simple RESTClient class
 open class RESTClient {
     private var baseURL: URL
     private let urlSession: URLSession
     private let genericHeaders: [String: String]
     private let genericParameters: [String: String]
-    
+
     public init(
         baseURL: String,
         session: URLSession = URLSession.shared,
@@ -60,18 +59,19 @@ open class RESTClient {
             fatalError()
         }
         self.baseURL = baseURL
-        self.urlSession = session
+        urlSession = session
         self.genericParameters = genericParameters
         self.genericHeaders = genericHeaders
     }
-    
+
+    @discardableResult
     open func get(
         path: Path,
         parameters: [String: String] = [:],
         headers: [String: String] = [:],
         _ completion: @escaping (Result<RESTResponse, Error>) -> Void
-    ) {
-        perform(
+    ) -> URLSessionDataTask {
+        return perform(
             method: .get,
             path: path,
             parameters: parameters,
@@ -81,15 +81,16 @@ open class RESTClient {
             completion($0)
         }
     }
-    
+
+    @discardableResult
     open func post(
         path: Path,
         parameters: [String: String] = [:],
         headers: [String: String] = [:],
         data: Data?,
         _ completion: @escaping (Result<RESTResponse, Error>) -> Void
-    ) {
-        perform(
+    ) -> URLSessionDataTask {
+        return perform(
             method: .post,
             path: path,
             parameters: parameters,
@@ -99,15 +100,16 @@ open class RESTClient {
             completion($0)
         }
     }
-    
+
+    @discardableResult
     open func put(
         path: Path,
         parameters: [String: String] = [:],
         headers: [String: String] = [:],
         data: Data?,
         _ completion: @escaping (Result<RESTResponse, Error>) -> Void
-    ) {
-        perform(
+    ) -> URLSessionDataTask {
+        return perform(
             method: .put,
             path: path,
             parameters: parameters,
@@ -117,14 +119,15 @@ open class RESTClient {
             completion($0)
         }
     }
-    
+
+    @discardableResult
     open func delete(
         path: Path,
         parameters: [String: String],
         headers: [String: String] = [:],
         _ completion: @escaping (Result<RESTResponse, Error>) -> Void
-    ) {
-        perform(
+    ) -> URLSessionDataTask {
+        return perform(
             method: .delete,
             path: path,
             parameters: parameters,
@@ -134,7 +137,7 @@ open class RESTClient {
             completion($0)
         }
     }
-    
+
     @discardableResult
     private func perform(
         method: HTTPMethod,
@@ -145,7 +148,7 @@ open class RESTClient {
         _ completion: @escaping (Result<RESTResponse, Error>) -> Void
     ) -> URLSessionDataTask {
         let combinedParams = parameters.merging(genericParameters) {
-            (current, _) in current
+            current, _ in current
         }
         let url = path.asURL(parameters: combinedParams)
         var request = URLRequest(url: url)
@@ -154,7 +157,7 @@ open class RESTClient {
         for header in headers {
             request.setValue(header.value, forHTTPHeaderField: header.key)
         }
-        let task = urlSession.dataTask(with: url) { (data, response, error) in
+        let task = urlSession.dataTask(with: url) { data, response, error in
             if let error = error {
                 completion(.failure(error))
             }
@@ -162,13 +165,13 @@ open class RESTClient {
                 completion(.failure(NoResponseError()))
                 return
             }
-            guard (200...299).contains(httpResponse.statusCode) else {
+            guard (200 ... 299).contains(httpResponse.statusCode) else {
                 completion(
                     .failure(
                         ServerError(
                             statusCode: httpResponse.statusCode,
                             response: httpResponse
-                            )
+                        )
                     )
                 )
                 return
@@ -190,4 +193,3 @@ open class RESTClient {
         return task
     }
 }
-
